@@ -1,0 +1,19 @@
+[package]
+categories = ["command-line-utilities"]
+description = "A trusty terminal typing tester."
+edition = "2021"
+keywords = ["typing-test", "typing", "wpm"]
+name = "gitype"
+readme = "README.md"
+repository = "https://github.com/harehare/gitype"
+version = "0.1.0"
+
+[dependencies]
+anyhow = "1.0"
+clap = {version = "3.1.18", features = ["derive"]}
+crossterm = "0.23"
+encoding = "0.2"
+ignore = "0.4"
+rand = "0.8.5"
+syntect = "4.6"
+tui = "0.18"
