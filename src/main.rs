@@ -7,10 +7,10 @@ use crossterm::{
 };
 use ignore::Walk;
 use rand::prelude::*;
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use tui::{backend::CrosstermBackend, Terminal};
 
 mod app;
 mod reader;
