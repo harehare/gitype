@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Axis, Block, Borders, Chart, Dataset, GraphType, Paragraph},
     Frame,
 };
-use std::path::PathBuf;
+use std::{cmp::Ordering, path::PathBuf};
 
 use crate::app::App;
 use crate::types::line::Line;
@@ -57,10 +57,10 @@ pub fn view(f: &mut Frame, app: &App, theme: &Theme, file: PathBuf) {
             .split(f.area());
         f.render_widget(result_view(&app.typing, Borders::BOTTOM, theme), chunks[0]);
         f.render_widget(
-            chart_view(app, &result.wpm_plot, &result.acc_plot, &theme),
+            chart_view(app, &result.wpm_plot, &result.acc_plot, theme),
             chunks[1],
         );
-        f.render_widget(help_view(&theme, file), chunks[2]);
+        f.render_widget(help_view(theme, file), chunks[2]);
     } else if app.typing.is_before_start() {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -83,7 +83,7 @@ pub fn view(f: &mut Frame, app: &App, theme: &Theme, file: PathBuf) {
             ),
             chunks[1],
         );
-        f.render_widget(help_view(&theme, file), chunks[2]);
+        f.render_widget(help_view(theme, file), chunks[2]);
     } else {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -112,8 +112,8 @@ pub fn view(f: &mut Frame, app: &App, theme: &Theme, file: PathBuf) {
 
 pub fn chart_view<'a>(
     app: &App,
-    wpm_dataset: &'a Vec<(f64, f64)>,
-    acc_dataset: &'a Vec<(f64, f64)>,
+    wpm_dataset: &'a [(f64, f64)],
+    acc_dataset: &'a [(f64, f64)],
     theme: &Theme,
 ) -> Chart<'a> {
     let elapsed_time = app.elapsed_time();
@@ -125,13 +125,13 @@ pub fn chart_view<'a>(
             .marker(symbols::Marker::Dot)
             .graph_type(GraphType::Line)
             .style(Style::default().bg(theme.bg()).fg(Color::Yellow))
-            .data(&wpm_dataset),
+            .data(wpm_dataset),
         Dataset::default()
             .name("acc")
             .marker(symbols::Marker::Dot)
             .graph_type(GraphType::Line)
             .style(Style::default().bg(theme.bg()).fg(Color::DarkGray))
-            .data(&acc_dataset),
+            .data(acc_dataset),
     ])
     .style(Style::default().bg(theme.bg()).fg(theme.fg()))
     .block(Block::default().style(Style::default().bg(theme.bg()).fg(theme.fg())))
@@ -238,40 +238,40 @@ fn result_view<'a>(typing: &Typing, border: Borders, theme: &Theme) -> Paragraph
     let result = ratatui::text::Line::from(vec![
         Span::styled(
             "wpm: ",
-            Style::default().bg(Theme::bg(&theme)).fg(Color::DarkGray),
+            Style::default().bg(Theme::bg(theme)).fg(Color::DarkGray),
         ),
         Span::styled(
             typing.wpm().to_string(),
-            Style::default().bg(Theme::bg(&theme)).fg(Color::Yellow),
+            Style::default().bg(Theme::bg(theme)).fg(Color::Yellow),
         ),
         Span::styled(
             " acc: ",
-            Style::default().bg(Theme::bg(&theme)).fg(Color::DarkGray),
+            Style::default().bg(Theme::bg(theme)).fg(Color::DarkGray),
         ),
         Span::styled(
             typing.acc().to_string() + "%",
-            Style::default().bg(Theme::bg(&theme)).fg(Color::Gray),
+            Style::default().bg(Theme::bg(theme)).fg(Color::Gray),
         ),
         Span::styled(
             " key: ",
-            Style::default().bg(Theme::bg(&theme)).fg(Color::DarkGray),
+            Style::default().bg(Theme::bg(theme)).fg(Color::DarkGray),
         ),
         Span::styled(
             (typing.typed() + typing.typo()).to_string(),
-            Style::default().bg(Theme::bg(&theme)).fg(Color::Gray),
+            Style::default().bg(Theme::bg(theme)).fg(Color::Gray),
         ),
-        Span::styled("/", Style::default().bg(Theme::bg(&theme)).fg(Color::Gray)),
+        Span::styled("/", Style::default().bg(Theme::bg(theme)).fg(Color::Gray)),
         Span::styled(
             (typing.typo()).to_string(),
-            Style::default().bg(Theme::bg(&theme)).fg(Color::Red),
+            Style::default().bg(Theme::bg(theme)).fg(Color::Red),
         ),
     ]);
     Paragraph::new(result)
-        .style(Style::default().bg(Theme::bg(&theme)).fg(Theme::fg(&theme)))
+        .style(Style::default().bg(Theme::bg(theme)).fg(Theme::fg(theme)))
         .block(
             Block::default()
                 .borders(border)
-                .style(Style::default().bg(Theme::bg(&theme)).fg(Theme::fg(&theme))),
+                .style(Style::default().bg(Theme::bg(theme)).fg(Theme::fg(theme))),
         )
         .alignment(Alignment::Left)
 }
@@ -282,7 +282,7 @@ fn time_view<'a>(app: &App, theme: &Theme) -> Paragraph<'a> {
         .iter()
         .map(|t| {
             Span::styled(
-                format!("{} ", t.as_secs().to_string()),
+                format!("{} ", t.as_secs()),
                 if app.time == *t {
                     Style::default()
                         .bg(theme.bg())
@@ -322,69 +322,73 @@ fn line<'a>(
     is_typing_error: bool,
     theme: &Theme,
 ) -> ratatui::text::Line<'a> {
-    if line.line_no() - 1 == current_line_index {
-        let entered = Span::styled(
-            line.entered_text().unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(Color::Green),
-        );
-        let current = if is_typing_error {
-            Span::styled(
+    match (line.line_no() - 1).cmp(&current_line_index) {
+        Ordering::Equal => {
+            let entered = Span::styled(
+                line.entered_text().unwrap_or("".to_owned()),
+                Style::default().bg(theme.bg()).fg(Color::Green),
+            );
+            let current = if is_typing_error {
+                Span::styled(
+                    line.current_text()
+                        .map(String::from)
+                        .unwrap_or("".to_owned()),
+                    Style::default()
+                        .bg(Color::Red)
+                        .fg(Color::White)
+                        .add_modifier(Modifier::SLOW_BLINK),
+                )
+            } else {
+                Span::styled(
+                    line.current_text()
+                        .map(String::from)
+                        .unwrap_or("".to_owned()),
+                    Style::default()
+                        .bg(Color::Green)
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD)
+                        .add_modifier(Modifier::SLOW_BLINK),
+                )
+            };
+            let rest = Span::styled(
+                line.rest_text().unwrap_or("".to_owned()),
+                Style::default().bg(theme.bg()).fg(theme.fg()),
+            );
+            ratatui::text::Line::from(vec![entered, current, rest])
+        }
+        Ordering::Greater => {
+            let entered = Span::styled(
+                line.entered_text().unwrap_or("".to_owned()),
+                Style::default().bg(theme.bg()).fg(Color::Green),
+            );
+            let current = Span::styled(
                 line.current_text()
                     .map(String::from)
                     .unwrap_or("".to_owned()),
-                Style::default()
-                    .bg(Color::Red)
-                    .fg(Color::White)
-                    .add_modifier(Modifier::SLOW_BLINK),
-            )
-        } else {
-            Span::styled(
+                Style::default().bg(theme.bg()).fg(Color::DarkGray),
+            );
+            let rest = Span::styled(
+                line.rest_text().unwrap_or("".to_owned()),
+                Style::default().bg(theme.bg()).fg(Color::DarkGray),
+            );
+            ratatui::text::Line::from(vec![entered, current, rest])
+        }
+        Ordering::Less => {
+            let entered = Span::styled(
+                line.entered_text().unwrap_or("".to_owned()),
+                Style::default().bg(theme.bg()).fg(Color::Green),
+            );
+            let current = Span::styled(
                 line.current_text()
                     .map(String::from)
                     .unwrap_or("".to_owned()),
-                Style::default()
-                    .bg(Color::Green)
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD)
-                    .add_modifier(Modifier::SLOW_BLINK),
-            )
-        };
-        let rest = Span::styled(
-            line.rest_text().unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(theme.fg()),
-        );
-        ratatui::text::Line::from(vec![entered, current, rest])
-    } else if line.line_no() - 1 > current_line_index {
-        let entered = Span::styled(
-            line.entered_text().unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(Color::Green),
-        );
-        let current = Span::styled(
-            line.current_text()
-                .map(String::from)
-                .unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(Color::DarkGray),
-        );
-        let rest = Span::styled(
-            line.rest_text().unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(Color::DarkGray),
-        );
-        ratatui::text::Line::from(vec![entered, current, rest])
-    } else {
-        let entered = Span::styled(
-            line.entered_text().unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(Color::Green),
-        );
-        let current = Span::styled(
-            line.current_text()
-                .map(String::from)
-                .unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(Color::Green),
-        );
-        let rest = Span::styled(
-            line.rest_text().unwrap_or("".to_owned()),
-            Style::default().bg(theme.bg()).fg(Color::DarkGray),
-        );
-        ratatui::text::Line::from(vec![entered, current, rest])
+                Style::default().bg(theme.bg()).fg(Color::Green),
+            );
+            let rest = Span::styled(
+                line.rest_text().unwrap_or("".to_owned()),
+                Style::default().bg(theme.bg()).fg(Color::DarkGray),
+            );
+            ratatui::text::Line::from(vec![entered, current, rest])
+        }
     }
 }
