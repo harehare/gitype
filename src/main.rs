@@ -7,10 +7,10 @@ use crossterm::{
 };
 use ignore::Walk;
 use rand::prelude::*;
+use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use tui::{backend::CrosstermBackend, Terminal};
 
 mod app;
 mod reader;
@@ -19,7 +19,7 @@ mod views;
 use crate::views::{view, Theme};
 use app::App;
 use reader::file::FileReader;
-use reader::reader::Reader;
+use reader::Reader;
 use types::typing::Typing;
 
 const QUIT_COMMAND: char = 'q';
@@ -119,12 +119,9 @@ fn run_app(mut app: App, text: &str, theme: Theme, file: PathBuf) -> io::Result<
         }
 
         if last_tick.elapsed() >= ONE_SEC {
-            match app.typing {
-                Typing::Running(_) => {
-                    app = app.tick();
-                    last_tick = Instant::now();
-                }
-                _ => (),
+            if let Typing::Running(_) = app.typing {
+                app = app.tick();
+                last_tick = Instant::now();
             }
         }
     }
@@ -163,7 +160,7 @@ fn list_files(path: PathBuf, target_extension: Option<String>) -> Vec<PathBuf> {
                 };
 
                 if entry.file_type().unwrap().is_file()
-                    && extension != ""
+                    && !extension.is_empty()
                     && match_extension(target_extension.clone(), extension.to_string().clone())
                 {
                     Some(entry)
@@ -180,7 +177,7 @@ fn list_files(path: PathBuf, target_extension: Option<String>) -> Vec<PathBuf> {
 fn pick_file(path: PathBuf, target_extension: Option<String>) -> Option<PathBuf> {
     let files = list_files(path, target_extension);
 
-    if files.len() == 0 {
+    if files.is_empty() {
         return None;
     }
 
@@ -200,7 +197,7 @@ fn main() -> Result<()> {
             args.line,
             Theme::new(&args.theme),
         ),
-        (_, Some(dir)) => match pick_file(PathBuf::from(dir), args.extension) {
+        (_, Some(dir)) => match pick_file(dir, args.extension) {
             Some(file) => start_typing(
                 file.clone(),
                 Duration::from_secs(args.time as u64),

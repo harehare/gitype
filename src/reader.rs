@@ -1,2 +1,7 @@
 pub mod file;
-pub mod reader;
+
+use anyhow::Result;
+
+pub trait Reader {
+    fn load(&self) -> Result<String>;
+}
