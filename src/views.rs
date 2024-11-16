@@ -35,8 +35,8 @@ impl Theme {
 
     pub fn bg(&self) -> Color {
         match self {
-            Theme::Dark => Color::Reset,
-            Theme::Light => Color::Reset,
+            Theme::Dark => Color::Black,
+            Theme::Light => Color::White,
         }
     }
 }
@@ -311,7 +311,7 @@ fn lines<'a>(
         .map(|l| line(l.clone(), current_line_index, is_typing_error, theme))
         .collect();
     Paragraph::new(text)
-        .style(Style::default().bg(theme.fg()).fg(theme.bg()))
+        .style(Style::default().bg(theme.bg()).fg(theme.fg()))
         .block(Block::default().style(Style::default().bg(theme.bg()).fg(theme.fg())))
         .alignment(Alignment::Left)
 }
