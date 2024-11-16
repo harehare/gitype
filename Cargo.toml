@@ -6,7 +6,7 @@ keywords = ["typing-test", "typing", "wpm"]
 name = "gitype"
 readme = "README.md"
 repository = "https://github.com/harehare/gitype"
-version = "0.1.0"
+version = "0.1.1"
 
 [dependencies]
 anyhow = "1.0"
