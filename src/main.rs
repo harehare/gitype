@@ -47,6 +47,9 @@ struct Args {
 
     #[clap(short = 't', default_value = "dark")]
     theme: String,
+
+    #[clap(long)]
+    force_correction: bool
 }
 
 fn close_app() -> Result<()> {
@@ -101,6 +104,9 @@ fn run_app(mut app: App, text: &str, theme: Theme, file: PathBuf) -> io::Result<
                         }
                         KeyCode::Char(c) => {
                             app = app.input(c);
+                        }
+                        KeyCode::Backspace | KeyCode::Delete => {
+                            app = app.backspace();
                         }
                         _ => (),
                     },

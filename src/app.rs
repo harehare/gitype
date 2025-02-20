@@ -76,6 +76,11 @@ impl App {
         self
     }
 
+    pub fn backspace(mut self) -> Self {
+        self.typing = self.typing.backspace();
+        self
+    }
+
     pub fn tick(mut self) -> Self {
         self.typing = self.typing.tick();
         self.progress = self.progress.add(self.typing.clone());

@@ -15,7 +15,7 @@ pub struct State {
     current_index: usize,
     display_lines: usize,
     end_time: Option<std::time::Instant>,
-    is_error: bool,
+    current_error: usize, // number of character to delete before continuing
     lines: Vec<Line>,
     remaining_time: Duration,
     start_time: Option<std::time::Instant>,
@@ -41,7 +41,7 @@ impl Typing {
                 remaining_time,
                 typed: 0,
                 typo: 0,
-                is_error: false,
+                current_error: 0,
                 display_lines,
             }))
         }
@@ -93,7 +93,14 @@ impl Typing {
                 let entered = current_line.input(c);
                 let mut lines = t.lines.clone();
 
-                if entered {
+                if t.current_error > 0 {
+                    Typing::Running(State {
+                        lines,
+                        typed: t.typed,
+                        current_error: t.current_error + 1,
+                        ..t.clone()
+                    })
+                } else if entered {
                     let next = current_line.next();
 
                     if next.is_entered() {
@@ -103,7 +110,6 @@ impl Typing {
                         Typing::Running(State {
                             lines,
                             typed: t.typed + 1,
-                            is_error: false,
                             ..t.clone()
                         })
                     }
@@ -112,10 +118,23 @@ impl Typing {
                         lines,
                         typed: t.typed,
                         typo: t.typo + 1,
-                        is_error: true,
+                        current_error: t.current_error + 1,
                         ..t.clone()
                     })
                 }
+            }
+            Typing::BeforeStart(t) => Typing::BeforeStart(t.clone()),
+            Typing::Finish(t) => Typing::Finish(t.clone()),
+        }
+    }
+
+    pub fn backspace(&self) -> Self {
+        match self {
+            Typing::Running(t) => {
+                Typing::Running(State {
+                    current_error: t.current_error.saturating_sub(1),
+                    ..t.clone()
+                })
             }
             Typing::BeforeStart(t) => Typing::BeforeStart(t.clone()),
             Typing::Finish(t) => Typing::Finish(t.clone()),
@@ -238,7 +257,7 @@ impl Typing {
 
     pub fn is_error(&self) -> bool {
         match self {
-            Typing::Running(s) => s.is_error,
+            Typing::Running(s) => s.current_error > 0,
             Typing::Finish(_) => false,
             _ => false,
         }
