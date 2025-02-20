@@ -27,9 +27,10 @@ USAGE:
     gitype [OPTIONS]
 
 OPTIONS:
-    -d <dir>                       
-    -e, --extension <EXTENSION>    
-    -f <file>                      
+    -d <dir>
+    -e, --extension <EXTENSION>
+    -f <file>
+        --force-correction
     -h, --help                     Print help information
         --line <LINE>              [default: 20]
     -t <THEME>                     [default: dark]
